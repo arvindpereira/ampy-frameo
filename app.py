@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import re
 import sys
 import socket
@@ -345,7 +346,6 @@ def automate_import():
         run_adb(['-s', target, 'shell', 'monkey', '-p', 'net.frameo.frame', '-c', 'android.intent.category.LAUNCHER', '1'])
         await_time = 3.0
         log(f"Waiting {await_time}s for app to load...")
-        import time
         time.sleep(await_time)
 
         # Helper to dump and parse layout XML
@@ -898,7 +898,6 @@ if __name__ == '__main__':
         webbrowser.open("http://127.0.0.1:5001")
 
     import threading
-    import time
     threading.Thread(target=open_browser, daemon=True).start()
     
     # Run server on port 5001 (to avoid conflict with common services on 5000)
