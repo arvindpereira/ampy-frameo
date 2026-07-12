@@ -41,6 +41,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncStatusBox = document.getElementById('sync-status-box');
     const syncStatusText = document.getElementById('sync-status-text');
     
+    // Gallery & Storage selectors
+    const tabBtnGallery = document.getElementById('tab-btn-gallery');
+    const tabContentGallery = document.getElementById('tab-content-gallery');
+    const storageUsageText = document.getElementById('storage-usage-text');
+    const storageFill = document.getElementById('storage-fill');
+    const chkFavoritesOnly = document.getElementById('chk-favorites-only');
+    const btnRefreshGallery = document.getElementById('btn-refresh-gallery');
+    const deviceGalleryGrid = document.getElementById('device-gallery-grid');
+    
     const chkOptimize = document.getElementById('chk-optimize');
     const optResolution = document.getElementById('opt-resolution');
     const optFit = document.getElementById('opt-fit');
@@ -166,6 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const path = localFolderPathInput.value.trim();
         const canSync = isConnected && isAuthorized && path.length > 0;
         btnSyncAction.disabled = !canSync;
+        
+        // Gallery Refresh check
+        btnRefreshGallery.disabled = !(isConnected && isAuthorized);
         
         if (isConnected) {
             btnConnect.innerText = 'Connected';
@@ -653,8 +665,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabBtnBeam.addEventListener('click', () => {
         tabBtnBeam.classList.add('active');
         tabBtnSync.classList.remove('active');
+        tabBtnGallery.classList.remove('active');
         tabContentBeam.classList.remove('hidden');
         tabContentSync.classList.add('hidden');
+        tabContentGallery.classList.add('hidden');
         btnSend.classList.remove('hidden');
         btnSyncAction.classList.add('hidden');
         updateControlsState();
@@ -663,11 +677,30 @@ document.addEventListener('DOMContentLoaded', () => {
     tabBtnSync.addEventListener('click', () => {
         tabBtnSync.classList.add('active');
         tabBtnBeam.classList.remove('active');
+        tabBtnGallery.classList.remove('active');
         tabContentSync.classList.remove('hidden');
         tabContentBeam.classList.add('hidden');
+        tabContentGallery.classList.add('hidden');
         btnSend.classList.add('hidden');
         btnSyncAction.classList.remove('hidden');
         updateControlsState();
+    });
+
+    tabBtnGallery.addEventListener('click', () => {
+        tabBtnGallery.classList.add('active');
+        tabBtnBeam.classList.remove('active');
+        tabBtnSync.classList.remove('active');
+        tabContentGallery.classList.remove('hidden');
+        tabContentBeam.classList.add('hidden');
+        tabContentSync.classList.add('hidden');
+        btnSend.classList.add('hidden');
+        btnSyncAction.classList.add('hidden');
+        updateControlsState();
+        
+        if (isConnected && isAuthorized) {
+            refreshStorageInfo();
+            refreshDeviceGallery();
+        }
     });
 
     // Browse Local Folder action
@@ -772,5 +805,163 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSyncAction.disabled = false;
             updateControlsState();
         }
+    });
+
+    // Gallery & Storage functionality
+    let cachedFavorites = [];
+    let cachedDeviceFiles = [];
+
+    async function refreshStorageInfo() {
+        if (!activeIp) return;
+        try {
+            const response = await fetch(`/api/device/storage?ip=${encodeURIComponent(activeIp)}`);
+            const data = await response.json();
+            if (data.success) {
+                storageUsageText.innerText = `${data.used} of ${data.size} used (${data.free} free)`;
+                storageFill.style.width = `${data.percent}%`;
+            } else {
+                storageUsageText.innerText = 'Failed to read storage';
+            }
+        } catch (err) {
+            storageUsageText.innerText = 'Error reading storage';
+        }
+    }
+
+    async function refreshDeviceGallery() {
+        if (!activeIp) return;
+        
+        deviceGalleryGrid.innerHTML = '<p class="empty-state">Loading gallery from device...</p>';
+        
+        try {
+            // 1. Fetch favorites
+            const favResp = await fetch('/api/device/favorites');
+            const favData = await favResp.json();
+            cachedFavorites = favData.success ? favData.favorites : [];
+            
+            // 2. Fetch device media
+            const mediaResp = await fetch(`/api/device/media?ip=${encodeURIComponent(activeIp)}`);
+            const mediaData = await mediaResp.json();
+            if (mediaData.success) {
+                cachedDeviceFiles = mediaData.files;
+                renderDeviceGalleryGrid();
+            } else {
+                deviceGalleryGrid.innerHTML = `<p class="empty-state error-text">Failed to fetch files: ${mediaData.error}</p>`;
+            }
+        } catch (err) {
+            deviceGalleryGrid.innerHTML = `<p class="empty-state error-text">Error loading gallery: ${err.message}</p>`;
+        }
+    }
+
+    function renderDeviceGalleryGrid() {
+        const favoritesOnly = chkFavoritesOnly.checked;
+        let files = cachedDeviceFiles;
+        
+        if (favoritesOnly) {
+            files = files.filter(f => cachedFavorites.includes(f.filename));
+        }
+        
+        if (files.length === 0) {
+            deviceGalleryGrid.innerHTML = `<p class="empty-state">${favoritesOnly ? 'No favorites found.' : 'No photos or videos on the frame.'}</p>`;
+            return;
+        }
+        
+        deviceGalleryGrid.innerHTML = '';
+        files.forEach(file => {
+            const card = document.createElement('div');
+            card.className = 'device-media-card';
+            
+            const isFav = cachedFavorites.includes(file.filename);
+            const thumbUrl = `/api/device/media/file/${file.filename}?ip=${encodeURIComponent(activeIp)}`;
+            
+            card.innerHTML = `
+                <img class="device-media-thumb" src="${thumbUrl}" alt="${file.filename}" loading="lazy">
+                ${file.is_video ? '<div class="video-badge">▶</div>' : ''}
+                <div class="device-media-actions">
+                    <button class="card-action-btn favorite-btn ${isFav ? 'is-favorite' : ''}" title="Favorite">
+                        ${isFav ? '★' : '☆'}
+                    </button>
+                    <button class="card-action-btn delete-btn" title="Delete">
+                        🗑️
+                    </button>
+                </div>
+            `;
+            
+            // Toggle favorite event
+            const favBtn = card.querySelector('.favorite-btn');
+            favBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const action = isFav ? 'remove' : 'add';
+                favBtn.disabled = true;
+                try {
+                    const resp = await fetch('/api/device/favorites', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filename: file.filename, action })
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        cachedFavorites = data.favorites;
+                        log(`${isFav ? 'Removed from' : 'Added to'} favorites: ${file.filename}`, 'success');
+                        renderDeviceGalleryGrid();
+                    } else {
+                        showToast('Failed to update favorites', 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    favBtn.disabled = false;
+                }
+            });
+            
+            // Delete event
+            const delBtn = card.querySelector('.delete-btn');
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!confirm(`Are you sure you want to delete ${file.filename} from the frame? This action is permanent.`)) {
+                    return;
+                }
+                
+                log(`Deleting ${file.filename} from device...`, 'info');
+                delBtn.disabled = true;
+                try {
+                    const resp = await fetch('/api/device/media/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ip: activeIp, filename: file.filename })
+                    });
+                    const data = await resp.json();
+                    if (data.success) {
+                        log(`Deleted file: ${file.filename}`, 'success');
+                        showToast('File deleted successfully', 'success');
+                        
+                        cachedDeviceFiles = cachedDeviceFiles.filter(f => f.filename !== file.filename);
+                        cachedFavorites = cachedFavorites.filter(f => f !== file.filename);
+                        
+                        renderDeviceGalleryGrid();
+                        refreshStorageInfo();
+                    } else {
+                        log(`Failed to delete: ${data.error}`, 'error');
+                        showToast(`Failed to delete: ${data.error}`, 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    delBtn.disabled = false;
+                }
+            });
+            
+            deviceGalleryGrid.appendChild(card);
+        });
+    }
+
+    btnRefreshGallery.addEventListener('click', () => {
+        if (isConnected && isAuthorized) {
+            refreshStorageInfo();
+            refreshDeviceGallery();
+        }
+    });
+
+    chkFavoritesOnly.addEventListener('change', () => {
+        renderDeviceGalleryGrid();
     });
 });

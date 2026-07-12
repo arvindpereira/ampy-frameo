@@ -142,6 +142,7 @@
                     <div class="tabs-header">
                         <button class="tab-btn active" id="tab-btn-beam" type="button">🚀 Beam Files</button>
                         <button class="tab-btn" id="tab-btn-sync" type="button">🔄 Sync Local Folder</button>
+                        <button class="tab-btn" id="tab-btn-gallery" type="button">📱 Device Gallery</button>
                     </div>
 
                     <!-- Tab Content: Beam Files -->
@@ -185,6 +186,37 @@
                         <div class="sync-status-box hidden" id="sync-status-box">
                             <h4 id="sync-status-title">Sync Status</h4>
                             <p id="sync-status-text">Ready</p>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Device Gallery -->
+                    <div class="tab-content hidden" id="tab-content-gallery">
+                        <p class="tab-description">Manage photos and videos currently stored on your Frameo. Select favorites or delete items remotely.</p>
+                        
+                        <!-- Storage status bar -->
+                        <div class="storage-card" id="storage-card">
+                            <div class="storage-info">
+                                <span>Disk Space</span>
+                                <span id="storage-usage-text">Scanning...</span>
+                            </div>
+                            <div class="storage-bar">
+                                <div class="storage-fill" id="storage-fill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Gallery controls -->
+                        <div class="gallery-controls">
+                            <label class="toggle-container">
+                                <input type="checkbox" id="chk-favorites-only" aria-label="Show favorites only">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">⭐ Favorites Only</span>
+                            </label>
+                            <button id="btn-refresh-gallery" class="btn btn-secondary btn-sm" type="button">🔄 Refresh Gallery</button>
+                        </div>
+
+                        <!-- Device Gallery Grid -->
+                        <div class="device-gallery-grid" id="device-gallery-grid">
+                            <p class="empty-state">No media loaded. Connect to your device and click Refresh Gallery.</p>
                         </div>
                     </div>
 
