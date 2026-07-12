@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frameo Local Photo & Video Sender</title>
+    <meta name="description" content="A premium utility to wirelessly transfer photos and videos to your Frameo digital photo frame via ADB over local network.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="glass-bg-blobs">
+        <div class="blob blob-purple"></div>
+        <div class="blob blob-indigo"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">📸</span>
+                <h1>Frameo <span class="gradient-text">Linker</span></h1>
+            </div>
+            <p class="subtitle">Wirelessly beam high-quality photos and videos directly to your digital frame</p>
+        </header>
+
+        <!-- Main Layout Grid -->
+        <main class="main-grid">
+            
+            <!-- Left Panel: Connection & Control -->
+            <section class="side-panel">
+                <!-- Connection Card -->
+                <div class="card glass-card" id="connection-card">
+                    <div class="card-header">
+                        <h2>Connection Manager</h2>
+                        <div class="status-indicator" id="status-indicator">
+                            <span class="status-dot dot-offline"></span>
+                            <span class="status-text" id="status-text">Checking Status...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ip-address">Frameo IP Address</label>
+                        <div class="input-with-button">
+                            <input type="text" id="ip-address" placeholder="e.g. 10.0.0.123" aria-label="Frameo IP Address">
+                            <button id="btn-connect" class="btn btn-primary" type="button">Connect</button>
+                        </div>
+                    </div>
+
+                    <div class="button-row">
+                        <button id="btn-scan" class="btn btn-secondary" type="button">
+                            <span class="icon">🔍</span> Scan Subnet
+                        </button>
+                        <button id="btn-disconnect" class="btn btn-danger" type="button" disabled>
+                            Disconnect
+                        </button>
+                    </div>
+
+                    <!-- Scanned IPs List (Hidden by default) -->
+                    <div id="scan-results-container" class="hidden">
+                        <h3>Discovered Devices</h3>
+                        <ul id="scan-results-list" class="scanned-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Image Settings / Optimization Card -->
+                <div class="card glass-card" id="optimization-card">
+                    <div class="card-header">
+                        <h2>Optimize Images</h2>
+                        <label class="switch-container" aria-label="Enable Image Optimization">
+                            <input type="checkbox" id="chk-optimize" checked>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="settings-content" id="optimization-settings">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label for="opt-resolution">Resolution</label>
+                                <select id="opt-resolution" class="select-input" aria-label="Target Resolution">
+                                    <option value="1280x800" selected>1280 × 800 (10.1")</option>
+                                    <option value="1920x1080">1920 × 1080 (16:9 HD)</option>
+                                    <option value="1024x600">1024 × 600 (7")</option>
+                                    <option value="1920x1200">1920 × 1200 (Ultra 10.1")</option>
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label for="opt-fit">Fitting</label>
+                                <select id="opt-fit" class="select-input" aria-label="Fitting Mode">
+                                    <option value="cover" selected>Crop to Fit</option>
+                                    <option value="contain">Fit Inside</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wireless Setup Guide -->
+                <div class="card glass-card" id="setup-card">
+                    <div class="card-header">
+                        <h2>First-Time Setup Guide</h2>
+                        <button id="btn-toggle-guide" class="btn-text" aria-label="Toggle Guide">Show</button>
+                    </div>
+                    <div id="guide-content" class="guide-content collapsed">
+                        <ol class="step-list">
+                            <li>On the frame, go to <strong>Settings → About</strong>.</li>
+                            <li>Toggle <strong>Beta Program</strong> to <strong>ON</strong>.</li>
+                            <li>Toggle the new <strong>ADB Access</strong> option to <strong>ON</strong>.</li>
+                            <li>Connect the frame to your Mac with a USB data cable.</li>
+                            <li>
+                                Click the button below to enable wireless mode on port 5555:
+                                <button id="btn-setup-wireless" class="btn btn-accent btn-sm" type="button">
+                                    ⚙️ Enable Wireless via USB
+                                </button>
+                            </li>
+                            <li>Look at the frame screen, allow debugging, and select <strong>"Always allow"</strong>.</li>
+                            <li>Unplug the USB and connect wirelessly using the IP!</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Live Logs / Console -->
+                <div class="card glass-card" id="console-card">
+                    <div class="card-header">
+                        <h2>System Logs</h2>
+                        <button id="btn-clear-logs" class="btn-text">Clear</button>
+                    </div>
+                    <div class="console-box" id="console-box">
+                        <div class="log-line system-log">[System] Application loaded. Ready for connection.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: File Transfer & Previews -->
+            <section class="content-panel">
+                <div class="card glass-card flex-grow" style="display: flex; flex-direction: column;">
+                    
+                    <!-- Tabs Header -->
+                    <div class="tabs-header">
+                        <button class="tab-btn active" id="tab-btn-beam" type="button">🚀 Beam Files</button>
+                        <button class="tab-btn" id="tab-btn-sync" type="button">🔄 Sync Local Folder</button>
+                    </div>
+
+                    <!-- Tab Content: Beam Files -->
+                    <div class="tab-content" id="tab-content-beam">
+                        <!-- Drag & Drop Upload Zone -->
+                        <div class="upload-zone" id="upload-zone">
+                            <input type="file" id="file-input" multiple accept="image/*,video/*" class="hidden-input" aria-label="Select files to send">
+                            <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden-input" aria-label="Select folder to send">
+                            <div class="upload-prompt">
+                                <span class="upload-icon">📥</span>
+                                <p class="upload-title">Drag & drop photos, videos, or folders here</p>
+                                <p class="upload-subtitle">
+                                    or click to <span class="browse-link" id="link-files">browse files</span> or <span class="browse-link" id="link-folder">browse folders</span>
+                                </p>
+                                <p class="file-limits">Supports JPEG, PNG, WEBP, and MP4 (Max 500MB total)</p>
+                            </div>
+                        </div>
+
+                        <!-- File Previews Grid -->
+                        <div class="preview-section hidden" id="preview-section">
+                            <div class="preview-header">
+                                <h3>Selected Files (<span id="file-count">0</span>)</h3>
+                                <button id="btn-clear-files" class="btn-text danger-text">Remove All</button>
+                            </div>
+                            <div class="preview-grid" id="preview-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tab Content: Sync Local Folder -->
+                    <div class="tab-content hidden" id="tab-content-sync">
+                        <p class="tab-description">Enter a local directory path on your Mac. The app will recursively scan, optimize, and sync photos/videos directly to the frame, automatically skipping files that are already pushed.</p>
+                        
+                        <div class="form-group">
+                            <label for="local-folder-path">Local Folder Path</label>
+                            <div class="input-with-button">
+                                <input type="text" id="local-folder-path" placeholder="e.g. /Users/arvind/Pictures/Frameo" aria-label="Local Folder Path">
+                                <button id="btn-browse-local" class="btn btn-secondary" type="button">Browse...</button>
+                            </div>
+                        </div>
+
+                        <div class="sync-status-box hidden" id="sync-status-box">
+                            <h4 id="sync-status-title">Sync Status</h4>
+                            <p id="sync-status-text">Ready</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-footer">
+                        <div class="progress-bar-container hidden" id="progress-bar-container">
+                            <div class="progress-info">
+                                <span id="progress-status">Uploading files...</span>
+                                <span id="progress-percent">0%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-fill" id="progress-fill"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button id="btn-automate-import" class="btn btn-secondary" type="button" disabled>
+                                🤖 Automate Import
+                            </button>
+                            <button id="btn-send" class="btn btn-primary btn-large" type="button" disabled>
+                                🚀 Send to Frameo
+                            </button>
+                            <button id="btn-sync-action" class="btn btn-primary btn-large hidden" type="button" disabled>
+                                🔄 Sync Folder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Main Script -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
